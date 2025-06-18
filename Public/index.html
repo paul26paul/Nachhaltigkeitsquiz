@@ -1,0 +1,192 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Nachhaltigkeits-Quiz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0fdf4;
+      margin: 0;
+      padding: 20px;
+      color: #2f5d3a;
+    }
+    .question {
+      display: none;
+      margin-bottom: 20px;
+      border-radius: 12px;
+      background: #ffffff;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .question.active {
+      display: block;
+    }
+    button {
+      display: block;
+      margin: 10px auto;
+      padding: 12px 24px;
+      font-size: 16px;
+      background-color: #48bb78;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    video, canvas {
+      width: 100%;
+      max-width: 400px;
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Wie nachhaltig bist du?</h1>
+  <div id="quiz"></div>
+  <video id="video" autoplay playsinline></video>
+  <button id="capture" style="display:none">📸 Foto aufnehmen & Ergebnis anzeigen</button>
+  <canvas id="canvas" style="display:none"></canvas>
+
+  <script>
+    const questions = [
+      {
+        text: "Wie oft isst du Fleisch, beziehungsweise Wurst?",
+        answers: [
+          { label: "Täglich / fast täglich", image: "viel_fleisch.png" },
+          { label: "Manchmal", image: "fleisch_mittel.png" },
+          { label: "Nie, Ich lebe vegetarisch/vegan", image: "vegan.png" }
+        ]
+      },
+      {
+        text: "Wie oft isst du andere tierische Produkte wie Eier, Milch, Butter, Käse?",
+        answers: [
+          { label: "Täglich / fast täglich", image: "viel_tierisch.png" },
+          { label: "Manchmal", image: "tierisch_mittel.png" },
+          { label: "Nie, Ich lebe vegetarisch/vegan", image: "vegan2" }
+        ]
+      },
+      {
+        text: "Was ist dein bevorzugtes Fortbewegungsmittel?",
+        answers: [
+          { label: "Mein Auto", image: "auto.png" },
+          { label: "Die Öffis", image: "oeffis.png" },
+          { label: "Mein Fahrrad", image: "fahrrad.png" }
+        ]
+      },
+      {
+        text: "Dein Handy gibt den Geist auf - was machst du?",
+        answers: [
+          { label: "Ich werfe es weg und hole mir das neueste Modell", image: "neu.png" },
+          { label: "Ich versuche es recyclen zu lassen und setze beim Neukauf auf ein Modell das Refurbished wurde", image: "refurbished.png" },
+          { label: "Ich versuche erst mein Handy reparieren zu lassen.", image: "reparieren.png" }
+        ]
+      },
+      {
+        text: "Wie oft fliegst du pro Jahr?",
+        answers: [
+          { label: "Nie, Ich nutze die Bahn oder verreise lokal", image: "flug_nie.png" },
+          { label: "1 - 2 mal pro Jahr, Kurzstrecke", image: "flug_wenig.png" },
+          { label: "Mehr als 3 Flüge pro Jahr, auch Langstrecke", image: "flug_viel.png" }
+        ]
+      },
+      {
+        text: "Wie stehst du zu Umwelt, bzw. Klimaschutz?",
+        answers: [
+          { label: "Ich bin aktiv in Gruppen und aktivistisch unterwegs", image: "aktivist.png" },
+          { label: "Ich finde Klimaschutz wichtig, bin aber eher passiv unterwegs", image: "passiv.png" },
+          { label: "Das einzige was ich schütze ist mein Recht auf unbegrenzte Geschwindigkeit auf unseren Autobahnen", image: "raser.png" }
+        ]
+      },
+      {
+        text: "Wie oft nutzt du AI Dienste wie ChatGPT?",
+        answers: [
+          { label: "Täglich", image: "Tisch.png" },
+          { label: "Manchmal", image: "Tisch.png" },
+          { label: "Nie", image: "Tisch.png" }
+        ]
+      },
+      {
+        text: "Wie gehst du mit Verpackungsmüll um?",
+        answers: [
+          { label: "Ich vermeide Verpackungsmüll und setze auf Mülltrennung", image: "vermeider.png" },
+          { label: "Ich achte nicht auf Verpackungen aber trenne meinen Müll", image: "muell_trenner.png" },
+          { label: "Ich achte nicht auf Verpackungen und trenne auch keinen Müll", image: "muell_schlecht.png" }
+        ]
+      },
+      {
+        text: "Wie würdest du deinen Wasserverbrauch bezeichnen?",
+        answers: [
+          { label: "Sparsam", image: "wasser_sparsam.png" },
+          { label: "Durchschnittlich", image: "wasser_mittel.png" },
+          { label: "Schon ein bisschen verschwenderisch", image: "wasser_hoch.png" }
+        ]
+      },
+      {
+        text: "Okay, letzte Frage! Wie gefällt dir die Ausstellung bisher?",
+        answers: [
+          { label: "Sehr gut, hat sich gelohnt zu kommen!", image: "ausstellung_gut.png" },
+          { label: "Ist okay", image: "ausstellung_okay.png" },
+          { label: "Ich fühl es grade nicht so", image: "ausstellung_schlecht.png" }
+        ]
+      }
+    ];
+
+    const quiz = document.getElementById("quiz");
+    let current = 0;
+    const answers = [];
+
+    function showQuestion(index) {
+      quiz.innerHTML = "";
+      const q = questions[index];
+      const div = document.createElement("div");
+      div.className = "question active";
+      const h2 = document.createElement("h2");
+      h2.textContent = q.text;
+      div.appendChild(h2);
+      q.answers.forEach((a) => {
+        const btn = document.createElement("button");
+        btn.textContent = a.label;
+        btn.onclick = () => {
+          answers.push(a);
+          current++;
+          if (current < questions.length) {
+            showQuestion(current);
+          } else {
+            document.getElementById("capture").style.display = "block";
+            initCamera();
+          }
+        };
+        div.appendChild(btn);
+      });
+      quiz.appendChild(div);
+    }
+
+    showQuestion(current);
+
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const capture = document.getElementById("capture");
+
+    function initCamera() {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then((stream) => {
+          video.srcObject = stream;
+        });
+    }
+
+    capture.onclick = () => {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0);
+      const dataUrl = canvas.toDataURL("image/jpeg");
+      localStorage.setItem("answers", JSON.stringify(answers));
+      localStorage.setItem("photo", dataUrl);
+      window.location.href = "result.html";
+    };
+  </script>
+</body>
+</html>

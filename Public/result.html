@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dein Ergebnis</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0fdf4;
+      padding: 20px;
+      text-align: center;
+      color: #2f5d3a;
+    }
+
+    #status {
+      margin-bottom: 10px;
+    }
+
+    #loading {
+      font-style: italic;
+      margin-top: 10px;
+      color: #7a9e81;
+    }
+
+    #bilder {
+      position: relative;
+      width: 800px;
+      height: 800px;
+      margin: 20px auto;
+    }
+
+    #bilder img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 0;
+    }
+
+    #final {
+  position: absolute;
+  width: 40%;
+  height: 40%;
+  top: 5%;
+  left: 5%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+
+  </style>
+</head>
+<body>
+  <h1>Hier ist dein Nachhaltigkeitsbild !</h1>
+  <p id="status">📤 Dein Bild wird gerade hochgeladen...</p>
+  <p id="loading">Dein Nachhaltigkeitsbild wird erstellt, noch einen Moment Geduld!...</p>
+  <div id="bilder"></div>
+
+<button id="printButton">🖨️ Bild drucken</button>
+
+
+  <script>
+    const categoryOrder = {
+      "viel_fleisch.png": 2,
+      "fleisch_mittel.png": 2,
+      "vegan.png": 2,
+      "viel_tierisch.png": 3,
+      "tierisch_mittel.png": 3,
+      "vegan2.png": 3,
+      "reparieren.png": 4,
+      "refurbished.png": 4,
+      "neu.png": 4,
+      "fahrrad.png": 5,
+      "oeffis.png": 5,
+      "auto.png": 5,
+      "muell_schlecht.png": 6,
+      "muell_trenner.png": 6,
+      "vermeider.png": 6,
+      "wasser_sparsam.png": 7,
+      "wasser_mittel.png": 7,
+      "wasser_hoch.png": 7,
+      "aktivist.png": 8,
+      "passiv.png": 8,
+      "raser.png": 8,
+      "flug_nie.png": 9,
+      "flug_wenig.png": 9,
+      "flug_viel.png": 9
+    };
+
+    async function uploadToCloudinary(base64Image) {
+      const CLOUD_NAME = "dawssgede";
+      const UPLOAD_PRESET = "nachhaltig";
+
+      const form = new FormData();
+      form.append("file", base64Image);
+      form.append("upload_preset", UPLOAD_PRESET);
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+        method: "POST",
+        body: form,
+      });
+
+      const data = await res.json();
+      return data.secure_url;
+    }
+
+    async function generateImage(imageUrl, prompt) {
+      try {
+        const res = await fetch("/replicate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, image: imageUrl })
+        });
+
+        if (!res.ok) {
+          document.getElementById("status").innerText = "❌ Fehler bei der Bildgenerierung.";
+          document.getElementById("loading").style.display = "none";
+          return null;
+        }
+
+        const data = await res.json();
+        return data.output;
+      } catch (e) {
+        document.getElementById("status").innerText = "❌ Netzwerkfehler.";
+        document.getElementById("loading").style.display = "none";
+        console.error("Fehler beim Generieren:", e);
+        return null;
+      }
+    }
+
+    async function renderResult() {
+      const answers = JSON.parse(localStorage.getItem("answers") || "[]");
+      const photo = localStorage.getItem("photo");
+      const bilderDiv = document.getElementById("bilder");
+
+      const imagesToAdd = [];
+
+      // Antwortbilder vorbereiten
+      answers.forEach((a) => {
+        const img = document.createElement("img");
+        img.src = "assets/" + a.image;
+
+        let z;
+        if (a.image === "tisch.png") {
+          z = 1;
+        } else {
+          z = categoryOrder[a.image] || 2;
+        }
+
+        img.style.zIndex = z;
+        imagesToAdd.push({ element: img, z });
+      });
+
+      // KI-generiertes Bild vorbereiten (ganz unten)
+      const final = document.createElement("img");
+      final.id = "final";
+      final.style.zIndex = 0;
+      imagesToAdd.push({ element: final, z: 0 });
+
+      // Alle Bilder sortiert nach z-index einfügen
+      imagesToAdd
+        .sort((a, b) => a.z - b.z)
+        .forEach(({ element }) => bilderDiv.appendChild(element));
+
+      // Upload & Bildgenerierung
+      document.getElementById("status").innerText = "📤 Lade Bild hoch...";
+      const imageUrl = await uploadToCloudinary(photo);
+
+      document.getElementById("status").innerText = "🛠️ Bild wird generiert...";
+      const outputUrl = await generateImage(imageUrl, "Make this a 90s style cartoon with a light blue Background");
+
+      if (outputUrl) {
+        document.getElementById("status").innerText = "✅ Fertig!";
+        document.getElementById("loading").style.display = "none";
+        final.src = outputUrl;
+      }
+    }
+
+    renderResult();
+
+  document.getElementById("printButton").addEventListener("click", () => {
+  const bilderDiv = document.getElementById("bilder");
+
+  // Neues Print-Fenster öffnen
+  const printWindow = window.open("", "_blank");
+
+  if (!printWindow) return;
+
+  const styles = `
+    <style>
+      body {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: white;
+      }
+      #bilder {
+        position: relative;
+        width: 800px;
+        height: 800px;
+      }
+      #bilder img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 0;
+      }
+    </style>
+  `;
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Bild drucken</title>
+        ${styles}
+      </head>
+      <body>
+        <div id="bilder">${bilderDiv.innerHTML}</div>
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+
+  setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 500);
+});
+
+
+
+
+  </script>
+</body>
+</html>
