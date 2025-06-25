@@ -1,0 +1,11 @@
+# Versteckte macOS-Dateien
+.DS_Store
+
+# Umgebungsvariablen (z. B. REPLICATE_API_TOKEN)
+.env
+
+# Node-Abhängigkeiten
+node_modules/
+
+# Log-Dateien
+npm-debug.log
