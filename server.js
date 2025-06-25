@@ -18,15 +18,17 @@ const replicate = new Replicate({ auth: process.env.REPLICATE_API_KEY });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Middleware
-app.use(cors());
-app.use(express.json({ limit: "20mb" }));
-app.use(express.static(path.join(__dirname, "public")));
-
+// ✨ 1. / zuerst auf start.html zeigen
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "start.html"));
 });
 
+// ✨ 2. Danach statische Dateien aktivieren
+app.use(express.static(path.join(__dirname, "public")));
+
+// 🔁 POST /replicate
+app.use(cors());
+app.use(express.json({ limit: "20mb" }));
 
 app.post("/replicate", async (req, res) => {
   const { prompt, image } = req.body;
@@ -42,8 +44,7 @@ app.post("/replicate", async (req, res) => {
   try {
     console.log("📥 Anfrage erhalten mit Prompt:", prompt);
 
-    // ✅ Hier deine gültige Modell-Version-ID eintragen!
-    const predictionVersion = "black-forest-labs/flux-kontext-pro"; // <- ersetzen!
+    const predictionVersion = "black-forest-labs/flux-kontext-pro"; // dein Modell
 
     let prediction = await replicate.predictions.create({
       version: predictionVersion,
@@ -52,13 +53,12 @@ app.post("/replicate", async (req, res) => {
         input_image: image,
         aspect_ratio: "match_input_image",
         output_format: "jpg",
-        safety_tolerance: 2
-      }
+        safety_tolerance: 2,
+      },
     });
 
     console.log("🧠 Prediction gestartet:", prediction.id);
 
-    // Warten bis abgeschlossen
     while (
       prediction.status !== "succeeded" &&
       prediction.status !== "failed" &&
@@ -69,7 +69,6 @@ app.post("/replicate", async (req, res) => {
       console.log("⏳ Status:", prediction.status);
     }
 
-    // 🔍 Fehlerprüfung + flexibles Output-Handling
     if (!prediction.output) {
       console.error("❌ Kein Output erhalten:", prediction.output);
       return res.status(500).json({ error: "Bildgenerierung lieferte kein Ergebnis." });
@@ -80,7 +79,6 @@ app.post("/replicate", async (req, res) => {
       : prediction.output;
 
     console.log("✅ Ergebnis-URL:", finalImage);
-
     res.json({ output: finalImage });
   } catch (err) {
     console.error("❌ Fehler bei Replicate-Aufruf:", err);
@@ -88,6 +86,7 @@ app.post("/replicate", async (req, res) => {
   }
 });
 
+// Server starten
 app.listen(3000, () => {
   console.log("✅ Server läuft auf http://localhost:3000");
 });
