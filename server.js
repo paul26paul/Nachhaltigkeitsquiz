@@ -23,6 +23,11 @@ app.use(cors());
 app.use(express.json({ limit: "20mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "start.html"));
+});
+
+
 app.post("/replicate", async (req, res) => {
   const { prompt, image } = req.body;
 
