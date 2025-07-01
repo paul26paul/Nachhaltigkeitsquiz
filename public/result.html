@@ -4,16 +4,34 @@
   <meta charset="UTF-8" />
   <title>Dein Ergebnis</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background-color: #f0fdf4;
-      padding: 20px;
+      background-color: #6a0d69;
+      margin: 0;
+      padding: 0;
       text-align: center;
-      color: #2f5d3a;
+      color: #ffffff;
+      position: relative;
+    }
+
+    #background {
+      background-image: url('assets/BGBGx4.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0.15;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
     }
 
     #status {
+      margin-top: 20px;
       margin-bottom: 10px;
     }
 
@@ -23,64 +41,100 @@
       color: #7a9e81;
     }
 
+    #spinner {
+      margin: 20px auto;
+      border: 6px solid #ddd;
+      border-top: 6px solid #ffffff;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      animation: spin 1s linear infinite;
+    }
 
-  #bilder {
-    position: relative;
-    width: 800px;
-    height: 800px;
-    margin: 20px auto;
-  }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
 
-  #bilder img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 0;
-  }
+    #bilder {
+      display: none;
+      position: relative;
+      width: 800px;
+      height: 800px;
+      margin: 40px auto;
+    }
 
-  #final {
-    position: absolute;
-    width: 40%;
-    height: 40%;
-    top: 5%;
-    left: 5%;
-    object-fit: cover;
-    z-index: 0;
-  }
+    #bilder img:not(#final):not(#qr):not(#qr-link) {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 0;
+    }
 
-  /* ✅ RICHTIG positionierter QR-Code */
-  #qr {
-    position: absolute;
-    width: 80px;
-    height: 80px;
-    bottom: 10px;
-    right: 10px;
-    object-fit: contain;
-    z-index: 10;
-  }
-</style>
+    #final {
+      position: absolute;
+      width: 100%;
+      height: 77%;
+      top: 0%;
+      left: 0%;
+      bottom: 20%;
+      object-fit: cover;
+      z-index: 0;
+    }
 
+    #qr {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      bottom: 10px;
+      right: 10px;
+      object-fit: contain;
+      z-index: 10;
+    }
+
+    #qr-link {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      bottom: 10px;
+      left: 10px;
+      object-fit: contain;
+      z-index: 10;
+    }
+
+    .button {
+      margin-top: 20px;
+      padding: 12px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #6a0d69;
+      cursor: pointer;
+    }
+
+    .button:hover {
+      background: #f2f2f2;
+    }
+  </style>
 </head>
 <body>
+  <div id="background"></div>
+
   <h1>Hier ist dein Nachhaltigkeitsbild!</h1>
   <p id="status">📤 Dein Bild wird gerade hochgeladen...</p>
+  <div id="spinner"></div>
   <p id="loading">Dein Nachhaltigkeitsbild wird erstellt, noch einen Moment Geduld!...</p>
-  <div id="bilder"></div>
 
-  <button id="printButton">🖨️ Bild drucken</button>
+  <div id="bilder"></div>
+  <button class="button" onclick="window.location.href='index.html'">🔄 Zurück zur Startseite</button>
 
   <script>
     const categoryOrder = {
       "tisch.png": 1,
-      "viel_fleisch.png": 2,
-      "fleisch_mittel.png": 2,
-      "vegan.png": 2,
-      "viel_tierisch.png": 3,
-      "tierisch_mittel.png": 3,
-      "vegan2.png": 3,
       "reparieren.png": 4,
       "refurbished.png": 4,
       "neu.png": 4,
@@ -98,15 +152,21 @@
       "raser.png": 8,
       "flug_nie.png": 9,
       "flug_wenig.png": 9,
-      "flug_viel.png": 9
+      "flug_viel.png": 9,
+      "viel_fleisch.png": 10,
+      "fleisch_mittel.png": 10,
+      "vegan.png": 10,
+      "viel_tierisch.png": 11,
+      "tierisch_mittel.png": 11,
+      "vegan2.png": 11,
     };
 
-    async function uploadToCloudinary(base64Image) {
+    async function uploadToCloudinary(file) {
       const CLOUD_NAME = "dawssgede";
       const UPLOAD_PRESET = "nachhaltig";
 
       const form = new FormData();
-      form.append("file", base64Image);
+      form.append("file", file);
       form.append("upload_preset", UPLOAD_PRESET);
 
       const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
@@ -119,27 +179,13 @@
     }
 
     async function generateImage(imageUrl, prompt) {
-      try {
-        const res = await fetch("/replicate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt, image: imageUrl })
-        });
-
-        if (!res.ok) {
-          document.getElementById("status").innerText = "❌ Fehler bei der Bildgenerierung.";
-          document.getElementById("loading").style.display = "none";
-          return null;
-        }
-
-        const data = await res.json();
-        return data.output;
-      } catch (e) {
-        document.getElementById("status").innerText = "❌ Netzwerkfehler.";
-        document.getElementById("loading").style.display = "none";
-        console.error("Fehler beim Generieren:", e);
-        return null;
-      }
+      const res = await fetch("/replicate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, image: imageUrl })
+      });
+      const data = await res.json();
+      return data.output;
     }
 
     async function renderResult() {
@@ -149,116 +195,61 @@
 
       const imagesToAdd = [];
 
-      // Antwortbilder vorbereiten
       answers.forEach((a) => {
         const img = document.createElement("img");
+        img.crossOrigin = "anonymous"; // wichtig für html2canvas
         img.src = "assets/" + a.image;
-
-        let z;
-        if (a.image === "tisch.png") {
-          z = 1;
-        } else {
-          z = categoryOrder[a.image] || 2;
-        }
-
-        img.style.zIndex = z;
-        imagesToAdd.push({ element: img, z });
+        img.style.zIndex = categoryOrder[a.image] || 2;
+        imagesToAdd.push({ element: img, z: parseInt(img.style.zIndex) });
       });
 
-      // KI-generiertes Bild vorbereiten (ganz unten)
       const final = document.createElement("img");
       final.id = "final";
+      final.crossOrigin = "anonymous"; // wichtig
       final.style.zIndex = 0;
       imagesToAdd.push({ element: final, z: 0 });
 
-      // Alle Bilder sortiert nach z-index einfügen
-      imagesToAdd
-        .sort((a, b) => a.z - b.z)
-        .forEach(({ element }) => bilderDiv.appendChild(element));
+      imagesToAdd.sort((a, b) => a.z - b.z).forEach(({ element }) => bilderDiv.appendChild(element));
 
-      // Upload & Bildgenerierung
       document.getElementById("status").innerText = "📤 Lade Bild hoch...";
-      const imageUrl = await uploadToCloudinary(photo);
+      const uploadedPhotoUrl = await uploadToCloudinary(photo);
 
       document.getElementById("status").innerText = "🛠️ Bild wird generiert...";
-      const outputUrl = await generateImage(imageUrl, "Make this a 90s style cartoon with a light blue Background");
+      const outputUrl = await generateImage(uploadedPhotoUrl, "Make this a 90s style cartoon with a light blue Background");
 
       if (outputUrl) {
-        document.getElementById("status").innerText = "✅ Fertig!";
-        document.getElementById("loading").style.display = "none";
-        final.src = outputUrl;
+        final.onload = async () => {
+          document.getElementById("status").innerText = "📸 Screenshot wird erstellt...";
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("spinner").style.display = "none";
+          bilderDiv.style.display = "block";
 
-        // ✅ Jetzt QR-Code einfügen
-        const qr = document.createElement("img");
-        qr.id = "qr";
-        qr.src = "assets/QR.png"; // ← Passe Pfad ggf. an
-        bilderDiv.appendChild(qr);
+          const qr = document.createElement("img");
+          qr.id = "qr";
+          qr.src = "assets/QR.png";
+          bilderDiv.appendChild(qr);
+
+          await new Promise(resolve => setTimeout(resolve, 300));
+
+          const canvas = await html2canvas(bilderDiv, { useCORS: true });
+
+          canvas.toBlob(async function(blob) {
+            const compositeUploadUrl = await uploadToCloudinary(blob);
+
+            const qrLink = document.createElement("img");
+            qrLink.id = "qr-link";
+            qrLink.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(compositeUploadUrl)}`;
+            bilderDiv.appendChild(qrLink);
+
+            document.getElementById("status").innerText = "✅ Fertig!";
+          });
+        };
+
+        final.src = outputUrl;
       }
     }
 
     renderResult();
-
-    document.getElementById("printButton").addEventListener("click", () => {
-      const bilderDiv = document.getElementById("bilder");
-
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) return;
-
-      const styles = `
-        <style>
-          body {
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background: white;
-          }
-          #bilder {
-            position: relative;
-            width: 800px;
-            height: 800px;
-          }
-          #bilder img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border-radius: 0;
-          }
-          #qr {
-            position: absolute;
-            width: 80px;
-            height: 80px;
-            bottom: 10px;
-            right: 10px;
-            z-index: 1;
-          }
-        </style>
-      `;
-
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Bild drucken</title>
-            ${styles}
-          </head>
-          <body>
-            <div id="bilder">${bilderDiv.innerHTML}</div>
-          </body>
-        </html>
-      `);
-
-      printWindow.document.close();
-      printWindow.focus();
-
-      setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-      }, 500);
-    });
   </script>
 </body>
 </html>
