@@ -114,26 +114,10 @@
       margin: 0 auto;
     }
 
-    #video, #overlay {
+    #video {
       width: 100%;
       border-radius: 12px;
       display: block;
-    }
-
-    #overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      pointer-events: none;
-      opacity: 0;
-      display: none;
-      transition: opacity 0.6s ease-in-out;
-      z-index: 2;
-    }
-
-    #overlay.visible {
-      display: block;
-      opacity: 0.6;
     }
 
     video, canvas {
@@ -164,7 +148,6 @@
     <div class="camera-container">
       <div class="video-wrapper">
         <video id="video" autoplay playsinline></video>
-        <img src="silhouette.png" alt="Silhouetten-Overlay" id="overlay" />
       </div>
       <button id="capture" style="display:none">📸 Foto aufnehmen & Ergebnis anzeigen</button>
       <canvas id="canvas" style="display:none"></canvas>
@@ -285,7 +268,6 @@
 
     function showQuestion(index) {
       updateBackground(index);
-
       quiz.innerHTML = "";
       const q = questions[index];
       const div = document.createElement("div");
@@ -323,7 +305,6 @@
       navigator.mediaDevices.getUserMedia({ video: true })
         .then((stream) => {
           video.srcObject = stream;
-          document.getElementById("overlay").classList.add("visible");
         });
     }
 
@@ -335,7 +316,6 @@
       const dataUrl = canvas.toDataURL("image/jpeg");
       localStorage.setItem("answers", JSON.stringify(answers));
       localStorage.setItem("photo", dataUrl);
-      document.getElementById("overlay").classList.remove("visible");
       window.location.href = "result.html";
     };
   </script>
